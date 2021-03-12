@@ -59,7 +59,10 @@ const secretsManagerBackend = new SecretsManagerBackend({
 const systemManagerBackend = new SystemManagerBackend({
   clientFactory: awsConfig.systemManagerFactory,
   assumeRole: awsConfig.assumeRole,
-  logger
+  logger,
+  checkUpdated: envConfig.ssmCheckUpdated,
+  intervalPolling: envConfig.pollerIntervalMilliseconds
+
 })
 const vaultOptions = {
   apiVersion: 'v1',
