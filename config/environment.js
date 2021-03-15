@@ -72,5 +72,6 @@ module.exports = {
   useHumanReadableLogLevels,
   logMessageKey,
   watchTimeout,
-  watchedNamespaces
+  watchedNamespaces,
+  ssmCheckUpdated
 }
