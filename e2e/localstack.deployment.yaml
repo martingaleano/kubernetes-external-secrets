@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: localstack
-        image: localstack/localstack:0.10.5
+        image: localstack/localstack:0.10.7
         resources:
           limits:
             cpu: 300m
