@@ -222,7 +222,7 @@ describe('ssm', async () => {
       })
 
       let result = await putParameter({
-        Name: `/e2e/permitted/${uuid}`,
+        Name: `/e2e/ssmCheck/${uuid}`,
         Type: 'String',
         Value: 'foo'
       }).catch(err => {
