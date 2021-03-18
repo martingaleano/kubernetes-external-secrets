@@ -216,5 +216,57 @@ describe('ssm', async () => {
       expect(result).to.not.equal(undefined)
       expect(result.body.status.status).to.contain('namespace does not allow to assume role let-me-be-root')
     })
+    it('should not pull from ssm after waiting POLLER_INTERVAL_MILLISECONDS', async () => {
+      awsConfig.systemManagerFactory({
+        checkUpdated: true
+      })
+
+      let result = await putParameter({
+        Name: `/e2e/permitted/${uuid}`,
+        Type: 'String',
+        Value: 'foo'
+      }).catch(err => {
+        expect(err).to.equal(null)
+      })
+
+      await new Promise(resolve => setTimeout(resolve, 10000))
+
+      result = await kubeClient
+        .apis[customResourceManifest.spec.group]
+        .v1.namespaces('default')[customResourceManifest.spec.names.plural]
+        .post({
+          body: {
+            apiVersion: 'kubernetes-client.io/v1',
+            kind: 'ExternalSecret',
+            metadata: {
+              name: `e2e-ssm-permitted-${uuid}`
+            },
+            spec: {
+              backendType: 'systemManager',
+              roleArn: 'let-me-be-root',
+              data: [
+                {
+                  key: `/e2e/permitted/${uuid}`,
+                  name: 'name'
+                }
+              ]
+            }
+          }
+        })
+
+      expect(result).to.not.equal(undefined)
+      expect(result.statusCode).to.equal(201)
+
+      const secret = await waitForSecret('default', `e2e-ssm-permitted-${uuid}`)
+      expect(secret).to.equal(undefined)
+
+      result = await kubeClient
+        .apis[customResourceManifest.spec.group]
+        .v1.namespaces('default')
+        .externalsecrets(`e2e-ssm-permitted-${uuid}`)
+        .get()
+      expect(result).to.not.equal(undefined)
+      expect(result.body.status.status).to.contain('The parameter has not changed since last time')
+    })
   })
 })
