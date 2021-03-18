@@ -7,7 +7,8 @@ const { expect } = require('chai')
 const {
   kubeClient,
   customResourceManifest,
-  awsConfig
+  awsConfig,
+  backends
 } = require('../../config')
 const { waitForSecret, uuid } = require('./framework.js')
 
@@ -217,19 +218,17 @@ describe('ssm', async () => {
       expect(result.body.status.status).to.contain('namespace does not allow to assume role let-me-be-root')
     })
     it('should not pull from ssm after waiting POLLER_INTERVAL_MILLISECONDS', async () => {
-      awsConfig.systemManagerFactory({
-        checkUpdated: true
-      })
+      backends.systemManager.checkUpdated = true
+
+      backends.systemManager.intervalPolling = 1000
 
       let result = await putParameter({
-        Name: `/e2e/ssmCheck/${uuid}`,
+        Name: `/e2e/ssmcheck/${uuid}`,
         Type: 'String',
         Value: 'foo'
       }).catch(err => {
         expect(err).to.equal(null)
       })
-
-      await new Promise(resolve => setTimeout(resolve, 10000))
 
       result = await kubeClient
         .apis[customResourceManifest.spec.group]
@@ -239,14 +238,61 @@ describe('ssm', async () => {
             apiVersion: 'kubernetes-client.io/v1',
             kind: 'ExternalSecret',
             metadata: {
-              name: `e2e-ssm-permitted-${uuid}`
+              name: `e2e-ssm-ssmcheck-${uuid}`
             },
             spec: {
               backendType: 'systemManager',
-              roleArn: 'let-me-be-root',
               data: [
                 {
-                  key: `/e2e/permitted/${uuid}`,
+                  key: `/e2e/ssmcheck/${uuid}`,
+                  name: 'name'
+                }
+              ]
+            }
+          }
+        })
+
+      await new Promise(resolve => setTimeout(resolve, 5000))
+
+      expect(result).to.not.equal(undefined)
+      expect(result.statusCode).to.equal(201)
+
+      result = await kubeClient
+        .apis[customResourceManifest.spec.group]
+        .v1.namespaces('default')
+        .externalsecrets(`e2e-ssm-ssmcheck-${uuid}`)
+        .get()
+      expect(result).to.not.equal(undefined)
+      expect(result.body.status.status).to.contain('The parameter has not changed since last time')
+    })
+    it('should pull from ssm with 1000 history of parameters', async () => {
+      backends.systemManager.checkUpdated = true
+
+      for (let i = 1; i <= 1000; i++) {
+        await putParameter({
+          Name: `/e2e/ssmcheck/${uuid}`,
+          Type: 'String',
+          Value: `foo${i}`,
+          Overwrite: true
+        }).catch(err => {
+          expect(err).to.equal(null)
+        })
+      }
+      const result = await kubeClient
+        .apis[customResourceManifest.spec.group]
+        .v1.namespaces('default')[customResourceManifest.spec.names.plural]
+        .post({
+          body: {
+            apiVersion: 'kubernetes-client.io/v1',
+            kind: 'ExternalSecret',
+            metadata: {
+              name: `e2e-ssmcheck-${uuid}`
+            },
+            spec: {
+              backendType: 'systemManager',
+              data: [
+                {
+                  key: `/e2e/ssmcheck/${uuid}`,
                   name: 'name'
                 }
               ]
@@ -257,16 +303,9 @@ describe('ssm', async () => {
       expect(result).to.not.equal(undefined)
       expect(result.statusCode).to.equal(201)
 
-      const secret = await waitForSecret('default', `e2e-ssm-permitted-${uuid}`)
-      expect(secret).to.equal(undefined)
-
-      result = await kubeClient
-        .apis[customResourceManifest.spec.group]
-        .v1.namespaces('default')
-        .externalsecrets(`e2e-ssm-permitted-${uuid}`)
-        .get()
-      expect(result).to.not.equal(undefined)
-      expect(result.body.status.status).to.contain('The parameter has not changed since last time')
+      const secret = await waitForSecret('default', `e2e-ssmcheck-${uuid}`)
+      expect(secret).to.not.equal(undefined)
+      expect(secret.body.data.name).to.equal('Zm9vMTAwMA==') // Expect base64 foo1000
     })
   })
 })

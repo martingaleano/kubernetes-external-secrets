@@ -32,7 +32,7 @@ const logMessageKey = process.env.LOG_MESSAGE_KEY || 'msg'
 
 const pollingDisabled = 'DISABLE_POLLING' in process.env
 
-const ssmCheckUpdated = process.env.SSM_CHECK_UPDATED || false
+const ssmCheckUpdated = process.env.SSM_CHECK_UPDATED || true
 
 const rolePermittedAnnotation = process.env.ROLE_PERMITTED_ANNOTATION || 'iam.amazonaws.com/permitted'
 const namingPermittedAnnotation = process.env.NAMING_PERMITTED_ANNOTATION || 'externalsecrets.kubernetes-client.io/permitted-key-name'
