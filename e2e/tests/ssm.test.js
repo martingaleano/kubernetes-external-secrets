@@ -265,10 +265,10 @@ describe('ssm', async () => {
       expect(result).to.not.equal(undefined)
       expect(result.body.status.status).to.contain('The parameter has not changed since last time')
     })
-    it('should pull from ssm with 1000 history of parameters', async () => {
+    it('should pull from ssm with 500 history of parameters', async () => {
       backends.systemManager.checkUpdated = true
 
-      for (let i = 1; i <= 1000; i++) {
+      for (let i = 1; i <= 500; i++) {
         await putParameter({
           Name: `/e2e/ssmcheck/${uuid}`,
           Type: 'String',
@@ -305,7 +305,7 @@ describe('ssm', async () => {
 
       const secret = await waitForSecret('default', `e2e-ssmcheck-${uuid}`)
       expect(secret).to.not.equal(undefined)
-      expect(secret.body.data.name).to.equal('Zm9vMTAwMA==') // Expect base64 foo1000
+      expect(secret.body.data.name).to.equal('Zm9vNTAw') // Expect base64 foo500
     })
   })
 })
